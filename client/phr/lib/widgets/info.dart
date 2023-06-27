@@ -15,7 +15,7 @@ class InfoWidget extends StatelessWidget {
         vertical: 5,
       ),
       decoration: BoxDecoration(
-        color: Colors.black,
+        color: Theme.of(context).colorScheme.surface,
         shape: BoxShape.rectangle,
         borderRadius: BorderRadius.circular(
           20,
@@ -29,7 +29,7 @@ class InfoWidget extends StatelessWidget {
       child: Text(
         text,
         textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodyText2!.copyWith(
+        style: Theme.of(context).textTheme.bodyText1!.copyWith(
             // height: 2,
             ),
       ),

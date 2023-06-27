@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:phr/screens/home_screen.dart';
+// import 'package:phr/providers/normal_provider.dart';
+// import 'package:phr/providers/normalprovider2.dart';
+// import 'package:phr/providers/testprovider.dart';
 import 'package:walletconnect_dart/walletconnect_dart.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/eth_utils_provider.dart';
 
+import './home_screen.dart';
+import './create_record.dart';
 import '../widgets/info.dart';
 import '../widgets/button.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
   static const routeName = '/login';
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   SessionStatus? _session;
   var _uri;
   var connector = WalletConnect(
@@ -28,6 +34,41 @@ class _LoginScreenState extends State<LoginScreen> {
       ],
     ),
   );
+
+  // void normalFunc() {
+  //   // ref.read(normalProvider.notifier).increment();
+  //   // print(ref.read(normalProvider));
+  //   print('normal func');
+  //   print(ref.read(ethUtilsNotifierProvider));
+  //   // print(ref.read(normal2StateNotifier));
+  // }
+
+  checkHealthRecord(String patientAddr) async {
+    // connector.
+    // final isPatient =
+    // await ref.read(ethUtilsProvider.notifier).hasRecord(patientAddr);
+    print('CHeck healt record');
+    print(await ref
+        .read(ethUtilsNotifierProvider.notifier)
+        .hasRecord(patientAddr));
+    if (await ref
+        .read(ethUtilsNotifierProvider.notifier)
+        .hasRecord(patientAddr)) {
+      Navigator.pushNamed(context, HomeScreen.routeName);
+    } else {
+      Navigator.pushNamed(context, CreateRecord.routeName);
+    }
+    // final isPatient = await ref.read(ethUtilsProvider.notifier).hasRecord(patientAddr);
+    // print('THis is teh patient in lgoin screen${isPatient}');
+    // '0x13D8B8eCf020D746Df2B81edEC16Be3FB6d03b73'
+    // connector
+    // EthereumWalletConnectProvider provider =
+    // EthereumWalletConnectProvider(connector);
+    // connector.
+    // provider.
+    // provider.
+  }
+
   loginUsingMetamask(BuildContext context) async {
     if (!connector.connected) {
       try {
@@ -55,6 +96,9 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() {
           _session = session;
         });
+        checkHealthRecord(session.accounts[0]);
+        // await checkHealthRecord(session.accounts[0], ref);
+        // normalFunc();
       } catch (exp) {
         print(exp);
       }
@@ -85,6 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
               _session = null;
             }));
     return Scaffold(
+        // backgroundColor: Theme.of(context).colorScheme.onBackground,
         // appBar: AppBar(
         //   backgroundColor: Theme.of(context).colorScheme.primary,
         // ),
@@ -102,7 +147,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Text(
               'Future of Health Care',
               style: Theme.of(context).textTheme.headline1!.copyWith(
-                    color: Colors.black,
+                    // color: Colors.black,
                     fontWeight: FontWeight.bold,
                   ),
             ),
@@ -122,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   // ),
                   height: 500,
                   decoration: BoxDecoration(
-                    color: Colors.grey,
+                    // color: Colors.grey,
                     shape: BoxShape.rectangle,
                     borderRadius: BorderRadius.circular(
                       20,
@@ -161,9 +206,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ButtonWidget(
               text: 'Press to Login',
               onPress: () {
-                Navigator.pushNamed(context, HomeScreen.routeName);
+                checkHealthRecord(_session!.accounts[0]);
+                // normalFunc();
+                // Navigator.pushNamed(context, HomeScreen.routeName);
               },
-            )
+            ),
         ],
       ),
     ));
