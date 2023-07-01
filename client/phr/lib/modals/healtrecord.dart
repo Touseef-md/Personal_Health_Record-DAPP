@@ -22,4 +22,12 @@ class HealthRecord {
       'timestamp': DateTime.now(),
     });
   }
+
+  Map toJson() => {
+        'name': name,
+        'bloodGroup': bloodGroup,
+        'age': age,
+        'weight': weight,
+        'height': height,
+      };
 }

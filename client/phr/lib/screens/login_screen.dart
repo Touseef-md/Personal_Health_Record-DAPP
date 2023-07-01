@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+// import 'package:phr/providers/metamask_provider.dart';
 // import 'package:phr/providers/normal_provider.dart';
 // import 'package:phr/providers/normalprovider2.dart';
 // import 'package:phr/providers/testprovider.dart';
-import 'package:walletconnect_dart/walletconnect_dart.dart';
-import 'package:url_launcher/url_launcher.dart';
+// import 'package:walletconnect_dart/walletconnect_dart.dart';
+// import 'package:walletconnect_flutter_v2/walletconnect_flutter_v2.dart';
+// import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/eth_utils_provider.dart';
-
+// import 'package:walletconnect_flutter_v2/walletconnect_flutter_v2.dart';
+// import 'package:walletconnect_flutter_v2/apis/models';
 import './home_screen.dart';
 import './create_record.dart';
 import '../widgets/info.dart';
@@ -21,19 +26,73 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  SessionStatus? _session;
+  // SessionStatus? _session;
+  var _session = null;
   var _uri;
-  var connector = WalletConnect(
-    bridge: 'https://bridge.walletconnect.org',
-    clientMeta: const PeerMeta(
-      name: 'My App',
-      description: 'An app for converting pictures to NFT',
-      url: 'https://walletconnect.org',
-      icons: [
-        'https://files.gitbook.com/v0/b/gitbook-legacy-files/o/spaces%2F-LJJeCjcLrr53DcT1Ml7%2Favatar.png?alt=media'
-      ],
-    ),
-  );
+  void fun() async {
+
+    // late 
+    // final walletConnect=WalletConnect
+    // Web3Wallet web3Wallet = await Web3Wallet.createInstance(
+    //   // relayUrl:
+    //   // 'wss://relay.walletconnect.com', // The relay websocket URL, leave blank to use the default
+    //   projectId: dotenv.env['WALLETCONNECT_PROJECTID']!,
+    //   metadata: const PairingMetadata(
+    //     name: 'phr-Wallet (Responder)',
+    //     description: 'A wallet that can be requested to sign transactions',
+    //     url: 'https://walletconnect.com',
+    //     icons: ['https://avatars.githubusercontent.com/u/37784886'],
+    //   ),
+    // );
+    // Web3App wcClient = await Web3App.createInstance(
+    //   // relayUrl: 'wss://relay.walletconnect.com',
+    //   projectId: dotenv.env['WALLETCONNECT_PROJECTID']!,
+    //   metadata: const PairingMetadata(
+    //     name: 'dApp',
+    //     description: 'Dapp for phr',
+    //     url: 'https://walletconnect.com',
+    //     icons: [
+    //       'https://avatars.githubusercontent.com/u/37784886',
+    //     ],
+    //   ),
+    // );
+    // print('wcClient done...');
+    // ConnectResponse resp = await wcClient.connect(requiredNamespaces: {
+    //   'eip155': RequiredNamespace(
+    //       methods: ['eth_signTransactions'], chains: ['eip155:1'], events: [])
+    // });
+    // Uri? uri = resp.uri;
+    // print('URI is ${uri}');
+    // var test = await canLaunch(uri.toString());
+    // print('executed...');
+    // if (test) {
+    //   print('can launch...');
+    // } else {
+    //   print('cannot launch...');
+    // }
+    // await launch('$uri&mode=external');
+    // final sessionData = await resp.session.future;
+    // print('Sessiondata is ${sessionData}');
+    // wcClient.sessions.onCreate.subscribe((args) {
+    //   print('THese are the args ${args}');
+    // });
+    // print(wcClient.signEngine.sessions);
+    // print('THisis the connector: ${wcClient.sessions.onCreate.subscribe((args) {
+    // print('These are the args ${args}');
+    // })}');
+  }
+  // var connector;
+  // var connector = WalletConnect(
+  //   bridge: 'https://bridge.walletconnect.org',
+  //   clientMeta: const PeerMeta(
+  //     name: 'My App',
+  //     description: 'An app for converting pictures to NFT',
+  //     url: 'https://walletconnect.org',
+  //     icons: [
+  //       'https://files.gitbook.com/v0/b/gitbook-legacy-files/o/spaces%2F-LJJeCjcLrr53DcT1Ml7%2Favatar.png?alt=media'
+  //     ],
+  //   ),
+  // );
 
   // void normalFunc() {
   //   // ref.read(normalProvider.notifier).increment();
@@ -45,15 +104,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   checkHealthRecord(String patientAddr) async {
     // connector.
-    // final isPatient =
-    // await ref.read(ethUtilsProvider.notifier).hasRecord(patientAddr);
-    print('CHeck healt record');
-    print(await ref
+    final isPatient = await ref
         .read(ethUtilsNotifierProvider.notifier)
-        .hasRecord(patientAddr));
-    if (await ref
-        .read(ethUtilsNotifierProvider.notifier)
-        .hasRecord(patientAddr)) {
+        .hasRecord(patientAddr);
+    // print('CHeck healt record');
+    // print(await ref
+    //     .read(ethUtilsNotifierProvider.notifier)
+    //     .hasRecord(patientAddr));
+    if (isPatient) {
       Navigator.pushNamed(context, HomeScreen.routeName);
     } else {
       Navigator.pushNamed(context, CreateRecord.routeName);
@@ -70,64 +128,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   loginUsingMetamask(BuildContext context) async {
-    if (!connector.connected) {
-      try {
-        var session = await connector.createSession(
-          onDisplayUri: (uri) async {
-            _uri = uri;
-            print('chsd');
-            // if (
-            await canLaunch(_uri);
-            // ) {
-            print('can launch successfull');
-            await launch('$_uri&mode=external');
-            print('launch successfull');
-            // else {
-            //   print('error occured');
-            // }
-            // }
-            // else {
-            //   print('error occured');
-            // }
-          },
-        );
-        print(session.accounts[0]);
-        print(session.chainId);
-        setState(() {
-          _session = session;
-        });
-        checkHealthRecord(session.accounts[0]);
-        // await checkHealthRecord(session.accounts[0], ref);
-        // normalFunc();
-      } catch (exp) {
-        print(exp);
-      }
-    }
+    // if (!connector.connected) {
+    //   try {
+    //     var session = await connector.createSession(
+    //       onDisplayUri: (uri) async {
+    //         _uri = uri;
+    //         print('chsd');
+    //         // if (
+    //         await canLaunch(_uri);
+    //         // ) {
+    //         print('can launch successfull');
+    //         await launch('$_uri&mode=external');
+    //         print('launch successfull');
+    //         // else {
+    //         //   print('error occured');
+    //         // }
+    //         // }
+    //         // else {
+    //         //   print('error occured');
+    //         // }
+    //       },
+    //     );
+    //     print(session.accounts[0]);
+    //     print(session.chainId);
+    //     setState(() {
+    //       _session = session;
+    //     });
+    //     checkHealthRecord(session.accounts[0]);
+    //     // await checkHealthRecord(session.accounts[0], ref);
+    //     // normalFunc();
+    //   } catch (exp) {
+    //     print(exp);
+    //   }
+    // }
   }
 
   @override
   Widget build(BuildContext context) {
-    connector.on(
-        'connect',
-        (session) => setState(
-              () {
-                _session = _session;
-              },
-            ));
-    connector.on(
-        'session_update',
-        (payload) => setState(() {
-              _session = payload as SessionStatus;
-              print('THis is the payload');
-              print(payload);
-              // print(payload!.accounts[0]);
-              // print(payload!.);
-            }));
-    connector.on(
-        'disconnect',
-        (payload) => setState(() {
-              _session = null;
-            }));
+    // connector.on(
+    //     'connect',
+    //     (session) => setState(
+    //           () {
+    //             _session = _session;
+    //           },
+    //         ));
+    // connector.on(
+    //     'session_update',
+    //     (payload) => setState(() {
+    //           _session = payload as SessionStatus;
+    //           print('THis is the payload');
+    //           print(payload);
+    //           // print(payload!.accounts[0]);
+    //           // print(payload!.);
+    //         }));
+    // connector.on(
+    //     'disconnect',
+    //     (payload) => setState(() {
+    //           _session = null;
+    //         }));
     return Scaffold(
         // backgroundColor: Theme.of(context).colorScheme.onBackground,
         // appBar: AppBar(
@@ -187,7 +245,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ButtonWidget(
                     text: 'Connect to Metamask',
                     onPress: () {
-                      loginUsingMetamask(context);
+                      // ref.read(metamaskNotidferProvider.notifier).connect();
+                      // fun();
+                      // loginUsingMetamask(context);
+                      checkHealthRecord(dotenv.env['ACCOUNT_ADDRESS']!);
                     },
                   ),
                 if (_session != null)
@@ -206,7 +267,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ButtonWidget(
               text: 'Press to Login',
               onPress: () {
-                checkHealthRecord(_session!.accounts[0]);
+                // checkHealthRecord(_session!.accounts[0]);
                 // normalFunc();
                 // Navigator.pushNamed(context, HomeScreen.routeName);
               },

@@ -23,6 +23,19 @@ class EthereumUtilsProvider extends StateNotifier<AsyncValue<int>> {
     }
     // return false;
   }
+
+  Future<bool> addNewRecord(String patientAddr, String cid)async {
+    state = const AsyncValue.loading();
+    try{
+      final result=await ethUtil.addNewPatient(EthereumAddress.fromHex(patientAddr), cid);
+      state=AsyncValue.data(1);
+    return result;
+    }
+    catch(err){
+      print('Error inside the addNewRecord function of ethProvider:${err}');
+      return false;
+    }
+  }
 }
 
 final ethUtilsNotifierProvider =

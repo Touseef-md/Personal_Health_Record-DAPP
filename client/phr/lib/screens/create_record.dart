@@ -29,15 +29,16 @@ class _CreateRecordState extends ConsumerState<CreateRecord> {
     'Select'
   ];
   final _formKey = GlobalKey<FormState>();
-  void _submit() {
+  void _submit() async {
     final isValid = _formKey.currentState!.validate();
     if (!isValid) {
       return;
     }
     _formKey.currentState!.save();
-    ref
+    await ref
         .read(healthRecordNotifierProvider.notifier)
         .addNewRecord(name, blood, height, weight, age);
+    // await ref.read(healthRecordNotifierProvider.notifier).retriveRecord(cid);
     // healthRecordNotifierProvider.
     // _formKey.currentState.
   }

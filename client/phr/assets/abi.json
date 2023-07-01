@@ -5,6 +5,30 @@
 				"internalType": "address",
 				"name": "patientAddr",
 				"type": "address"
+			},
+			{
+				"internalType": "string",
+				"name": "cid",
+				"type": "string"
+			}
+		],
+		"name": "addNewPatient",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "memo",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "patientAddr",
+				"type": "address"
 			}
 		],
 		"name": "addRecord",

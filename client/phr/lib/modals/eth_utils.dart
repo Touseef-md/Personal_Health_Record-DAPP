@@ -38,6 +38,47 @@ class EthereumUtils {
     }
   }
 
+  Future<bool> addNewPatient(EthereumAddress patientAddr, String cid) async {
+    try {
+      var contract = await getDeployedContract();
+      final ethFunction = contract.function('addNewPatient');
+      final data = ethFunction.encodeCall([patientAddr, cid]);
+      final privateKey = EthPrivateKey.fromHex(dotenv.env['PRIVATE_KEY']!);
+      // final credentials = Credentials(EthereumAddress.fromHex(patientAddr), privateKey);
+      final credentials =
+          ethClient.credentialsFromPrivateKey(dotenv.env['PRIVATE_KEY']!);
+      Transaction tx = Transaction.callContract(
+        contract: contract,
+        function: ethFunction,
+        parameters: [patientAddr, cid],
+        from: patientAddr,
+      );
+
+      // CredentialsWithKnownAddress()
+      // Credentials cred=;
+      // Credentials(address,)
+      // CustomTransactionSender();
+      // CustomTransactionSender().sendTransaction(transaction);
+      // ethClient.credentialsFromPrivateKey(privateKey);
+      final result =
+          await ethClient.sendTransaction(credentials as Credentials, tx);
+      print('Transaction hash is : ${result}');     
+      // final result = await ethClient.call(
+      //     contract: contract,
+      //     function: ethFunction,
+      //     params: [patientAddr, cid]);
+      if (result.isEmpty) {
+        throw Exception(
+            'addNewPatient function of ethUtils returns empty list');
+      }
+      // return result[0];
+      return false;
+    } catch (err) {
+      print('Error inside the addNewPatient function of EthUtils: ${err}');
+      return false;
+    }
+  }
+
   Future<DeployedContract> getDeployedContract() async {
     var abi = await rootBundle.loadString('assets/abi.json');
     final contract = DeployedContract(
