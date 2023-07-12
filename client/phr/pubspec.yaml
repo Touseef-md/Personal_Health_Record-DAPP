@@ -49,6 +49,10 @@ dependencies:
   rsa_encrypt: ^2.0.0
   FilecoinStorage:
     path: ./filecoin_flutter/
+  firebase_core: ^2.14.0
+  flutter_local_notifications: ^15.1.0+1
+  firebase_messaging: ^14.6.4
+  cloud_firestore: ^4.8.2
   # walletconnect_flutter_v2: ^2.0.12
   # flutter_web3: ^2.1.9
   # provider: ^6.0.5

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phr/screens/home_screen.dart';
 import '../providers/health_record_provider.dart';
 
 class CreateRecord extends ConsumerStatefulWidget {
@@ -29,7 +31,7 @@ class _CreateRecordState extends ConsumerState<CreateRecord> {
     'Select'
   ];
   final _formKey = GlobalKey<FormState>();
-  void _submit() async {
+  Future _submit() async {
     final isValid = _formKey.currentState!.validate();
     if (!isValid) {
       return;
@@ -38,6 +40,11 @@ class _CreateRecordState extends ConsumerState<CreateRecord> {
     await ref
         .read(healthRecordNotifierProvider.notifier)
         .addNewRecord(name, blood, height, weight, age);
+    print('ADd record done from createpage ...');
+    // await ref
+    // .read(healthRecordNotifierProvider.notifier)
+    // .retriveRecord(dotenv.env['ACCOUNT_ADDRESS']!);
+    Navigator.pushNamed(context, HomeScreen.routeName);
     // await ref.read(healthRecordNotifierProvider.notifier).retriveRecord(cid);
     // healthRecordNotifierProvider.
     // _formKey.currentState.

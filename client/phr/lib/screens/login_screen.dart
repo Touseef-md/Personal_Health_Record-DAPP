@@ -9,10 +9,14 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 // import 'package:walletconnect_flutter_v2/walletconnect_flutter_v2.dart';
 // import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phr/providers/doctor_provider.dart';
+import 'package:phr/providers/health_record_provider.dart';
+import 'package:phr/screens/create_doctor_record.dart';
 import '../providers/eth_utils_provider.dart';
 // import 'package:walletconnect_flutter_v2/walletconnect_flutter_v2.dart';
 // import 'package:walletconnect_flutter_v2/apis/models';
 import './home_screen.dart';
+import './doctor_home_screen.dart';
 import './create_record.dart';
 import '../widgets/info.dart';
 import '../widgets/button.dart';
@@ -28,10 +32,11 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   // SessionStatus? _session;
   var _session = null;
-  var _uri;
+  // var _uri;
+  bool _alreadyRegistered = false;
+  bool _connectPressed = false;
   void fun() async {
-
-    // late 
+    // late
     // final walletConnect=WalletConnect
     // Web3Wallet web3Wallet = await Web3Wallet.createInstance(
     //   // relayUrl:
@@ -106,15 +111,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // connector.
     final isPatient = await ref
         .read(ethUtilsNotifierProvider.notifier)
-        .hasRecord(patientAddr);
+        .getIsPatient(patientAddr);
     // print('CHeck healt record');
     // print(await ref
     //     .read(ethUtilsNotifierProvider.notifier)
     //     .hasRecord(patientAddr));
     if (isPatient) {
+      print('THis is patient...');
+      await ref
+          .read(healthRecordNotifierProvider.notifier)
+          .retriveRecord(patientAddr);
       Navigator.pushNamed(context, HomeScreen.routeName);
+    } else if (await ref
+        .read(ethUtilsNotifierProvider.notifier)
+        .getIsDoctor(patientAddr)) {
+      // print('THis is doctor..');
+      await ref.read(doctorNotifierProvider.notifier).getDoctor(patientAddr);
+
+      Navigator.pushNamed(context, DoctorHomeScreen.routeName);
     } else {
-      Navigator.pushNamed(context, CreateRecord.routeName);
+      print('This is nothing...');
+      setState(() {
+        _alreadyRegistered = false;
+      });
+      // Navigator.pushNamed(context, CreateRecord.routeName);
     }
     // final isPatient = await ref.read(ethUtilsProvider.notifier).hasRecord(patientAddr);
     // print('THis is teh patient in lgoin screen${isPatient}');
@@ -187,93 +207,111 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     //           _session = null;
     //         }));
     return Scaffold(
-        // backgroundColor: Theme.of(context).colorScheme.onBackground,
-        // appBar: AppBar(
-        //   backgroundColor: Theme.of(context).colorScheme.primary,
-        // ),
-        body: SingleChildScrollView(
-      child: Column(
-        // mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Container(
-            margin: EdgeInsets.fromLTRB(
-              10,
-              60,
-              10,
-              10,
-            ),
-            child: Text(
-              'Future of Health Care',
-              style: Theme.of(context).textTheme.headline1!.copyWith(
-                    // color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.symmetric(
-              horizontal: 10,
-              vertical: 10,
-            ),
-            child: Stack(
-              alignment: Alignment.bottomCenter,
-              children: [
-                Container(
-                  // margin: EdgeInsets.symmetric(
-                  //   horizontal: 10,
-                  //   vertical: 10,
-                  // ),
-                  height: 500,
-                  decoration: BoxDecoration(
-                    // color: Colors.grey,
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(
-                      20,
+      // backgroundColor: Theme.of(context).colorScheme.onBackground,
+      // appBar: AppBar(
+      //   backgroundColor: Theme.of(context).colorScheme.primary,
+      // ),
+      body: SingleChildScrollView(
+        child: Column(
+          // mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Container(
+              margin: EdgeInsets.fromLTRB(
+                10,
+                60,
+                10,
+                10,
+              ),
+              child: Text(
+                'Future of Health Care',
+                style: Theme.of(context).textTheme.headline1!.copyWith(
+                      // color: Colors.black,
+                      fontWeight: FontWeight.bold,
                     ),
-                    image: DecorationImage(
-                      fit: BoxFit.fitHeight,
-                      image: AssetImage(
-                        'assets/images/LoginImage.jpg',
+              ),
+            ),
+            Container(
+              margin: EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 10,
+              ),
+              child: Stack(
+                alignment: Alignment.bottomCenter,
+                children: [
+                  Container(
+                    // margin: EdgeInsets.symmetric(
+                    //   horizontal: 10,
+                    //   vertical: 10,
+                    // ),
+                    height: 500,
+                    decoration: BoxDecoration(
+                      // color: Colors.grey,
+                      shape: BoxShape.rectangle,
+                      borderRadius: BorderRadius.circular(
+                        20,
+                      ),
+                      image: DecorationImage(
+                        fit: BoxFit.fitHeight,
+                        image: AssetImage(
+                          'assets/images/LoginImage.jpg',
+                        ),
                       ),
                     ),
+                    // child: Image.asset(
+                    //   'assets/images/LoginImage.jpg',
+                    // ),
                   ),
-                  // child: Image.asset(
-                  //   'assets/images/LoginImage.jpg',
-                  // ),
-                ),
-                if (_session == null)
-                  ButtonWidget(
-                    text: 'Connect to Metamask',
-                    onPress: () {
-                      // ref.read(metamaskNotidferProvider.notifier).connect();
-                      // fun();
-                      // loginUsingMetamask(context);
-                      checkHealthRecord(dotenv.env['ACCOUNT_ADDRESS']!);
-                    },
-                  ),
-                if (_session != null)
-                  Column(
-                    children: [
-                      InfoWidget(
-                        text: ' Account Address :\n${_session!.accounts[0]}',
+                  if (_session == null && _connectPressed == false)
+                    ButtonWidget(
+                      text: 'Connect to Metamask',
+                      onPress: () {
+                        // ref.read(metamaskNotidferProvider.notifier).connect();
+                        // fun();
+                        // loginUsingMetamask(context);
+                        _connectPressed = true;
+                        checkHealthRecord(dotenv.env['ACCOUNT_ADDRESS']!);
+                      },
+                    ),
+                  if (_connectPressed && _alreadyRegistered == false)
+                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      ButtonWidget(
+                        text: 'Create Doctor Profile',
+                        onPress: () {
+                          Navigator.pushNamed(
+                              context, CreateDoctorRecord.routeName);
+                        },
                       ),
-                      InfoWidget(text: 'ChainId: ${_session!.chainId}')
-                    ],
-                  )
-              ],
+                      ButtonWidget(
+                        text: 'Create Patient Profile',
+                        onPress: () {
+                          Navigator.pushNamed(context, CreateRecord.routeName);
+                        },
+                      ),
+                    ]),
+                  if (_session != null)
+                    Column(
+                      children: [
+                        InfoWidget(
+                          text: ' Account Address :\n${_session!.accounts[0]}',
+                        ),
+                        InfoWidget(text: 'ChainId: ${_session!.chainId}')
+                      ],
+                    )
+                ],
+              ),
             ),
-          ),
-          if (_session != null)
-            ButtonWidget(
-              text: 'Press to Login',
-              onPress: () {
-                // checkHealthRecord(_session!.accounts[0]);
-                // normalFunc();
-                // Navigator.pushNamed(context, HomeScreen.routeName);
-              },
-            ),
-        ],
+            if (_session != null)
+              ButtonWidget(
+                text: 'Press to Login',
+                onPress: () {
+                  // checkHealthRecord(_session!.accounts[0]);
+                  // normalFunc();
+                  // Navigator.pushNamed(context, HomeScreen.routeName);
+                },
+              ),
+          ],
+        ),
       ),
-    ));
+    );
   }
 }

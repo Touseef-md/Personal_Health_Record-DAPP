@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/container.dart';
 import 'package:flutter/src/widgets/framework.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phr/providers/health_record_provider.dart';
 import 'package:phr/widgets/button.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -171,6 +174,18 @@ class HomeScreen extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                 // textAlign: TextAlign.left,
+              ),
+              Consumer(
+                builder: (context, ref, child) {
+                  return ElevatedButton(
+                    onPressed: () async {
+                      await ref
+                          .read(healthRecordNotifierProvider.notifier)
+                          .retriveRecord(dotenv.env['ACCOUNT_ADDRESS']!);
+                    },
+                    child: Text('Retrive Data'),
+                  );
+                },
               )
             ],
           ),

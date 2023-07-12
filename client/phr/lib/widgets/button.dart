@@ -18,9 +18,9 @@ class ButtonWidget extends StatelessWidget {
       ),
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.primary,
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
           fixedSize: Size(
-            200,
+            150,
             60,
           ),
         ),
@@ -30,7 +30,7 @@ class ButtonWidget extends StatelessWidget {
         },
         child: Text(
           text,
-          style: Theme.of(context).textTheme.bodyText1,
+          style: Theme.of(context).textTheme.labelLarge,
         ),
       ),
     );

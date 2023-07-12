@@ -1,11 +1,11 @@
 import 'dart:convert';
-
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:phr/providers/eth_utils_provider.dart';
-import 'package:rsa_encrypt/rsa_encrypt.dart';
-import 'package:pointycastle/asymmetric/api.dart';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+import 'package:phr/providers/rsa_provider.dart';
+// import 'package:rsa_encrypt/rsa_encrypt.dart';
+// import 'package:pointycastle/asymmetric/api.dart';
+// import 'dart:io';
+// import 'package:path_provider/path_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './filecoin_provider.dart';
 
@@ -17,47 +17,15 @@ class HealthRecordProvider extends StateNotifier<AsyncValue<int>> {
   int _age = 0;
   late HealthRecord healthRecord;
   late String cid;
-  late var _keyPair;
+  // var _keyPair;
+  late final _publicKey;
+  // ref.read(rsaKeyNotifierProvider.notifier).getPublicKey;
+  late final _privateKey;
+  // ref.read(rsaKeyNotifierProvider.notifier).getPrivateKey;
   int counter = 0;
   // String _publicK
   StateNotifierProviderRef<HealthRecordProvider, AsyncValue<int>> ref;
   HealthRecordProvider(this.ref) : super(AsyncValue.loading()) {}
-
-  Future _generateRSAKeyPairs() async {
-    // final keyPair;
-    var helper = RsaKeyHelper();
-    // helper
-    _keyPair = await helper.computeRSAKeyPair(helper.getSecureRandom());
-    // keyPair.encodePrivateKeytoPemPKCS1();
-    var publicKey =
-        helper.encodePublicKeyToPemPKCS1(_keyPair.publicKey as RSAPublicKey);
-    var privateKey =
-        helper.encodePrivateKeyToPemPKCS1(_keyPair.privateKey as RSAPrivateKey);
-    // print(helper.encodePublicKeyToPemPKCS1(keyPair.publicKey as RSAPublicKey));
-    // print(
-    // helper.encodePrivateKeyToPemPKCS1(keyPair.privateKey as RSAPrivateKey));
-    // print('fdsfsd${keyPair.publicKey.toString()}');
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    // print('PAth is ${documentsDirectory.path}');
-    File filePublic = File('${documentsDirectory.path}/my_file0.txt');
-    File filePrivate = File('${documentsDirectory.path}/my_file1.txt');
-
-    final writingPublicResponse = await filePublic.writeAsString(publicKey);
-    // print('Writing response: ${writingPublicResponse}');
-    // print(await file.readAsString());
-    final writingPrivateResponse = await filePrivate.writeAsString(privateKey);
-    // print('Writing privateResponse: ${writingPrivateResponse}');
-    // return [publicKey, privateKey];
-    return _keyPair;
-  }
-
-  String _encryptWithRSA(String message, RSAPublicKey publicKey) {
-    return encrypt(message, publicKey);
-  }
-
-  String _decryptWithRSA(String cipher, RSAPrivateKey privateKey) {
-    return decrypt(cipher, privateKey);
-  }
 
   HealthRecord toRecord(Map data) {
     HealthRecord newRecord = HealthRecord(
@@ -74,17 +42,27 @@ class HealthRecordProvider extends StateNotifier<AsyncValue<int>> {
     return newRecord;
   }
 
-  void retriveRecord(String cid) async {
+  Future retriveRecord(String patientAddr) async {
+    await ref.read(rsaKeyNotifierProvider.notifier).readKeys(0);
+    cid = await ref
+        .read(ethUtilsNotifierProvider.notifier)
+        .getPatient(patientAddr);
     var message =
         await ref.read(filecoinNotifierProvider.notifier).retriveData(cid);
     // print('THis is the message: ${message}');
+    if (message.isEmpty) return;
     var messageDecode = utf8.decode(message);
     // var message = cipher;
-    var messageRetived = _decryptWithRSA(messageDecode, _keyPair.privateKey);
+    // await getKeys();
+    // var helper = RsaKeyHelper();
+    var messageRetived =
+        ref.read(rsaKeyNotifierProvider.notifier).decryptWithRSA(messageDecode);
+    // _decryptWithRSA(messageDecode, helper.parsePrivateKeyFromPem(_privateKey));
     print('THIs is after decryption : ${messageRetived}');
     // print(jsonDecode(messageRetived));
     var test = jsonDecode(messageRetived);
-    print(test.runtimeType);
+    healthRecord = toRecord(test);
+    // print(newRecord.bloodPressure);
     // toRecord(test);
   }
 
@@ -106,8 +84,13 @@ class HealthRecordProvider extends StateNotifier<AsyncValue<int>> {
 
     String jsonHealthRecord = jsonEncode(healthRecord);
     print('THis is the josn record: $jsonHealthRecord');
-    _keyPair = await _generateRSAKeyPairs();
-    var cipher = _encryptWithRSA(jsonHealthRecord, _keyPair.publicKey);
+
+    await ref.read(rsaKeyNotifierProvider.notifier).createKeyPair(
+        0); //0 is given to create patient public/private Key pair
+    var cipher = ref
+        .read(rsaKeyNotifierProvider.notifier)
+        .encryptWithRSA(jsonHealthRecord);
+    // _encryptWithRSA(jsonHealthRecord, helper.parsePublicKeyFromPem(_publicKey));
     // print('THis is the original ciphper: ${cipher}');
     // var encod = utf8.encode(cipher);
     var cipherEncode = utf8.encode(cipher);
@@ -117,7 +100,7 @@ class HealthRecordProvider extends StateNotifier<AsyncValue<int>> {
         .read(filecoinNotifierProvider.notifier)
         .postData(cipherEncode);
 
-    ref
+    await ref
         .read(ethUtilsNotifierProvider.notifier)
         .addNewRecord(dotenv.env['ACCOUNT_ADDRESS']!, cid);
     // retriveRecord(cid);

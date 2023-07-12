@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:FilecoinStorage/api.dart';
@@ -36,8 +35,6 @@ class FilecoinProvider extends StateNotifier<AsyncValue<int>> {
 
   Future postData(List<int> data) async {
     state = AsyncValue.loading();
-    // data = 'Çiç¸«àý3úêÛÌËZCóFO¦0³ÈÕ}¹®{|-àéOÊ+®·M|Ók¸"DcÌdqÍyÖ¿¯Âwë÷Îd'é2Á°üÿoD{L£cÖÿURGóÐ©õ¶Ö:ú£Yz¤ð¤gxå@¢Þ*¨C! VxÂìàEö¢ÓE';
-    // data=`Çiç¸«àý3úêÛÌËZCóFO¦0³ÈÕ}¹®{|-àéOÊ+®·M|Ók¸"DcÌdqÍyÖ¿¯Âwë÷Îd'é2Á°üÿoD{L£cÖÿURGóÐ©õ¶Ö:ú£Yz¤ð¤gxå@¢Þ*¨C! VxÂìàEö¢ÓE`;
     // data
     // var fileResult=await f.FilePicker.;
     // final streamData = await Stream.value(data.codeUnits);

@@ -5,7 +5,7 @@ class HealthRecord {
   final String age;
   double weight = 0;
   double height = 0;
-  late List<Map<String, dynamic>> bloodPressure;
+  late List<Map<String, dynamic>> bloodPressure=[];
   HealthRecord({
     required this.name,
     required this.bloodGroup,
