@@ -71,6 +71,7 @@ class HomeScreen extends StatelessWidget {
                           ),
                           Text(
                             'Age: 22',
+                            
                             style: Theme.of(context).textTheme.bodyText2,
                           ),
                           Text(

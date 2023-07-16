@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:phr/providers/rsa_provider.dart';
+// import 'package:phr/providers/rsa_provider.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import './doctor.dart';
@@ -32,7 +32,7 @@ class EthereumUtils {
       if (result.isEmpty) {
         return result;
       }
-      return result[0];
+      return result;
       // return true;
     } catch (err) {
       print('Error in getDoctor() ethUtils: ${err}');

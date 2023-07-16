@@ -14,12 +14,16 @@ contract HealthRecord {
         string name;
         string email;
         string imageUrl;
+        string publicKey;
         address doctorAddr;
+        address [] patients;
+        mapping(address => bool) Ispatients;
+        //
         // address addr;
     }
 
     function getIsPatient(address patientAddr) public view returns (bool) {
-        if(isPatient[patientAddr]==true){
+        if (isPatient[patientAddr] == true) {
             return true;
         }
         return false;
@@ -49,16 +53,64 @@ contract HealthRecord {
         );
         isPatient[patientAddr] = true;
         patientRecords[patientAddr] = cid;
+        return true;
     }
 
     function getIsDoctor(address doctorAddr) public view returns (bool) {
-        if(isDoctor[doctorAddr]==true){
+        if (isDoctor[doctorAddr] == true) {
             return true;
         }
         return false;
     }
+    // function getDoctorHelper(address doctorAddr) internal view returns(Doctor storage){
+    //     return doctorRecords[doctorAddr];
+    // }
+    function getDoctor(address doctorAddr) public view returns (string memory,string memory,string memory,address,address[] memory) {
+        require(
+            getIsDoctor(doctorAddr) == true,
+            "Account address is not registered as doctor."
+        );
+        // address[] arr;
+        // for(uint i=0)
+        return (doctorRecords[doctorAddr].name,doctorRecords[doctorAddr].email,doctorRecords[doctorAddr].imageUrl,doctorRecords[doctorAddr].doctorAddr,doctorRecords[doctorAddr].patients);
+        // return getDoctorHelper(doctorAddr);
+        // return doctorRecords[doctorAddr];
+    }
 
-    function getDoctor(address doctorAddr) public view {
+    function addNewDoctor(
+        address doctorAddr,
+        string calldata publicKey,
+        string calldata name,
+        string calldata email,
+        string calldata imageUrl
+    ) public returns (bool) {
+        require(
+            getIsDoctor(doctorAddr) == false,
+            "Account address is already registered as doctor."
+        );
+        require(
+            getIsPatient(doctorAddr) == false,
+            "Account address is already registered as patient."
+        );
+        isDoctor[doctorAddr] = true;
+        Doctor storage newDoctor = doctorRecords[doctorAddr];
+        newDoctor.doctorAddr = doctorAddr;
+        newDoctor.email = email;
+        newDoctor.imageUrl = imageUrl;
+        newDoctor.name = name;
+        newDoctor.publicKey = publicKey;
+        return true;
+    }
 
+    function addPatientForDoctor(
+        address patientAddr,
+        address doctorAddr
+    ) public  {
+        require(
+            getIsDoctor(doctorAddr) == true,
+            "addPatientForDoctor() function is triggered by non-doctor address."
+        );
+        doctorRecords[doctorAddr].Ispatients[patientAddr] = true;
+        doctorRecords[doctorAddr].patients.push(patientAddr);
     }
 }

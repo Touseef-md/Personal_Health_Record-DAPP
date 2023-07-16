@@ -1,23 +1,34 @@
-// import 'dart:js_interop';
-
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:phr/providers/doctor_provider.dart';
+import 'package:phr/providers/eth_utils_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:phr/screens/approve_doctor_screen.dart';
+import '../modals/doctor.dart';
 
-class DoctorHomeScreen extends StatefulWidget {
+class DoctorHomeScreen extends ConsumerStatefulWidget {
   static const routeName = '/doctor';
   const DoctorHomeScreen({super.key});
 
   @override
-  State<DoctorHomeScreen> createState() => _DoctorHomeScreenState();
+  ConsumerState<DoctorHomeScreen> createState() => _DoctorHomeScreenState();
 }
 
-class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
+class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
   String? mtoken = "";
+  String? patientAddress = '';
+  late var documentId;
+  final _form = GlobalKey<FormState>();
   @override
   void initState() {
     // TODO: implement initState
@@ -59,10 +70,29 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
   }
 
   void saveToken() async {
+    documentId = ref.read(doctorNotifierProvider).value?.address;
+    // print('Save token id ${documentId}');
+    // print('${dotenv.env['ACCOUNT_ADDRESS']}');
     await FirebaseFirestore.instance
         .collection('UserTokens')
-        .doc('User1')
+        .doc('${documentId}')
         .set({'token': mtoken});
+  }
+
+  Future storeNewDoctor(Map data) async {
+    print('Store new doctor function');
+    final directory = await getExternalStorageDirectories();
+    print(directory);
+    var address = data['address'];
+    print('THis is the address${address}');
+    final writeFile = File('${directory![0].path}/${address}.txt');
+    // File(
+    // '${directory![0].path}/phr/NewDoctorData/file${data['address']}.txt');
+    // print('THis is the built file ${writeFile}');
+    final writtenFile = await writeFile.writeAsString(data.toString());
+    print('Written file is : ${writtenFile}');
+    final readFile = await writtenFile.readAsString();
+    print('This is the read file: ${readFile}');
   }
 
   void initInfo() {
@@ -75,9 +105,22 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       initializationSettings,
       onDidReceiveNotificationResponse: (details) async {
         try {
+          // print('INside the details');
           if (details != null) {
-          } else {}
-        } catch (err) {}
+            print(details.payload);
+            print(
+                'THis is the details received ${details.id},${details.input},${details.notificationResponseType},${details.payload}');
+            Navigator.pushNamed(
+              context,
+              ApproveDoctorScreen.routeName,
+              arguments: details.payload,
+            );
+          } else {
+            print('Details are null');
+          }
+        } catch (err) {
+          print('Error is ${err}');
+        }
         return;
       },
     );
@@ -86,7 +129,8 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       print('THis is the message:${message.data}');
       print(
           'onMessage: ${message.notification?.title}/${message.notification?.body}');
-
+      await storeNewDoctor(message.data);
+      print('LIne after store function');
       BigTextStyleInformation bigTextStyleInformation = BigTextStyleInformation(
         message.notification!.body.toString(),
         htmlFormatBigText: true,
@@ -95,8 +139,8 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
       );
       AndroidNotificationDetails androidPlatformChannelSpecifics =
           AndroidNotificationDetails(
-        'channelId',
-        'channelName',
+        '2',
+        '2',
         importance: Importance.high,
         styleInformation: bigTextStyleInformation,
         priority: Priority.high,
@@ -109,14 +153,82 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
 
       await flutterLocalNotificationsPlugin.show(0, message.notification?.title,
           message.notification?.body, platformChannelSpecifics,
-          payload: message.data['title']);
+          payload: message.data.toString());
     });
+  }
 
-    // FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  void pushMessage(String token, String body, String title) async {
+    final doctor = ref.read(doctorNotifierProvider).value!;
+    try {
+      await http.post(
+        Uri.parse('https://fcm.googleapis.com/fcm/send'),
+        headers: <String, String>{
+          'Content-Type': 'application/json',
+          'Authorization':
+              'key=AAAAr6_IiXQ:APA91bEhqkKelWHfS-3uJfHK85tYnKlN-eMbujt0TiSfi2moYNOwoKOOM_h1OlS22_xftYVIktWcwYTaEBX68YKcXsLTEHTYQdOeUhJJO0sA-aJ2Vt3jsJWfjfdSenUBdPr5IMz80c6P'
+        },
+        body: jsonEncode(
+          <String, dynamic>{
+            'priority': 'high',
+            'data': <String, dynamic>{
+              'click_action': 'FLUTTER_NOTIFICATIOIN_CLICK',
+              'status': 'done',
+              'body': 'This is the data body',
+              'title': 'This is the data title',
+              'name': doctor.name,
+              'email': doctor.email,
+              'address': doctor.address
+            },
+            'notification': <String, dynamic>{
+              'title': title,
+              'body': body,
+              'android_channel_id': '2'
+            },
+            'to': token
+          },
+        ),
+      );
+    } catch (err) {
+      print(err);
+    }
+  }
+
+  void _onSubmit() async {
+    final isValid = _form.currentState == null;
+    if (isValid || !_form.currentState!.validate()) {
+      return;
+    }
+    _form.currentState!.save();
+    // print(patientAddress);
+    // print('Cross check ${documentId == patientAddress!.toLowerCase()}');
+    // print(
+    // 'TRUe or false   ${patientAddress!.toLowerCase() == ref.read(doctorNotifierProvider).value!.address}');
+    // await FirebaseFirestore.instance
+    //     .collection('UserTokens')
+    //     .doc('User1')
+    //     .set({'token': mtoken});
+    final test = patientAddress!.toLowerCase().toString();
+    // print('THis is the pateint address ${patientAddress!.toLowerCase()}');
+    // final testSnap = await FirebaseFirestore.instance
+    // .collection("UserTokens")
+    // .doc("User1")
+    // .get();
+    // print(
+    // 'THis is the test Snap${testSnap.exists},${testSnap.id},${testSnap.data()}');
+    DocumentSnapshot snap = await FirebaseFirestore.instance
+        .collection("UserTokens")
+        .doc(test)
+        .get();
+    print('Testing firestone');
+    String token = (snap.data() as Map)['token'];
+    print('TOken is ${token}');
+    // final doctor = ref.read(doctorNotifierProvider).value!.address;
+    pushMessage(token, 'New doctor wants to access your PHR', 'A New Doctor');
   }
 
   @override
   Widget build(BuildContext context) {
+    final doctor = ref.watch(doctorNotifierProvider);
     return Scaffold(
       // extendBodyBehindAppBar: true,
       // extendBody: true,
@@ -125,11 +237,142 @@ class _DoctorHomeScreenState extends State<DoctorHomeScreen> {
         // backgroundColor: Colors.transparent,
         // foregroundColor: Colors.white,
       ),
-      body: Column(
-        children: [
-          Text('Hello, \n '),
-          Text('THis is ')
-        ],
+      body: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        child: Column(
+          // crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hello,',
+                      style: Theme.of(context).textTheme.headlineLarge,
+                    ),
+                    Text(
+                      '${doctor.value?.name} 👋',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineLarge!
+                          .copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                CircleAvatar(
+                  backgroundImage: NetworkImage(
+                    doctor.value!.imageUrl,
+                    // scale: 5,
+                  ),
+                  minRadius: 10,
+                  maxRadius: 35,
+                )
+              ],
+            ),
+            Container(
+              width: double.infinity,
+              child: Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(
+                    25,
+                  ),
+                ),
+                // elevation: 5,
+                color: Colors.black,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Add new Patient',
+                        style:
+                            Theme.of(context).textTheme.headlineSmall!.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
+                      SizedBox(
+                        height: 10,
+                      ),
+                      Form(
+                        key: _form,
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              decoration: InputDecoration(
+                                constraints: BoxConstraints.loose(
+                                  Size(
+                                    double.infinity,
+                                    45,
+                                  ),
+                                ),
+                                border: UnderlineInputBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    20,
+                                  ),
+                                ),
+                                fillColor: Colors.white,
+                                filled: true,
+                                // label: Text(
+                                //   'Enter patient Address ->',
+                                // ),
+                                labelText: 'Enter',
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Enter a valid account address';
+                                }
+                                return null;
+                              },
+                              onSaved: (newValue) {
+                                setState(() {
+                                  patientAddress = newValue;
+                                });
+                              },
+                            ),
+                            SizedBox(
+                              height: 10,
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                _onSubmit();
+                              },
+                              child: Text(
+                                'Add Patient',
+                              ),
+                            )
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            TextFormField(
+              decoration: InputDecoration(
+                  label: Text(
+                    'Search Patient using Address',
+                  ),
+                  constraints: BoxConstraints.loose(
+                    Size(
+                      double.infinity,
+                      50,
+                    ),
+                  )
+                  // border: OutlineInputBorder(),
+                  ),
+              onFieldSubmitted: (value) {},
+            ),
+            // ListView.builder(itemBuilder: (context, index) {
+
+            // },itemCount: ,)
+            Text('THis is '),
+            // ref.watch(ethUtilsNotifierProvider);
+          ],
+        ),
       ),
     );
   }
