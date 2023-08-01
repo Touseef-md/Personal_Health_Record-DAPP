@@ -17,6 +17,41 @@ class EthereumUtils {
     ethClient = Web3Client(infura, httpClient);
   }
 
+  Future waitForConfirmation(String txHash) async {
+    try {
+      TransactionReceipt? receipt;
+      do {
+        // Wait for some time before checking the status again (e.g., 5 seconds)
+        await Future.delayed(Duration(seconds: 5));
+
+        // Get the transaction receipt
+        receipt = await ethClient.getTransactionReceipt(txHash);
+      } while (receipt ==
+          null); // Loop until receipt is not null (i.e., transaction is confirmed)
+
+      if (receipt.status == true) {
+        // The transaction has been successfully confirmed and included in a block
+        print('Transaction confirmed');
+        print('Block number: ${receipt.blockNumber}');
+
+        // Call your function here after the transaction is confirmed
+        // yourFunctionAfterConfirmation();
+        return true;
+      } else {
+        // The transaction failed and was not included in a block
+        print('Transaction failed');
+        return false;
+        // print('Error message: ${receipt.error}');
+
+        // Handle the failure or retry if needed
+      }
+    } catch (e) {
+      // Handle any errors that occurred during the request
+      print('Error checking transaction status: $e');
+      return false;
+    }
+  }
+
   Future getDoctor(String doctorAddr) async {
     try {
       // print("Called getDoctor");
@@ -32,11 +67,29 @@ class EthereumUtils {
       if (result.isEmpty) {
         return result;
       }
+      print('THis is the doctor after getting it :${result}');
       return result;
       // return true;
     } catch (err) {
       print('Error in getDoctor() ethUtils: ${err}');
       return null;
+    }
+  }
+
+  Future getDoctorForPatient(String patientAddr) async {
+    try {
+      print(
+          'THis is the input to the getDoctorForPatient() function:${patientAddr}');
+      var contract = await getDeployedContract();
+      final ethFunction = contract.function('getDoctorForPatient');
+      final result = await ethClient.call(
+          contract: contract,
+          function: ethFunction,
+          params: [EthereumAddress.fromHex(patientAddr)]);
+      print('Result of getting doctors for patient: ${result}');
+      return result[0];
+    } catch (err) {
+      print('Error in getDoctorForPatient() ethUtils:${err}');
     }
   }
 
@@ -113,7 +166,11 @@ class EthereumUtils {
       if (result == null || result.isEmpty) {
         return false;
       }
-      return true;
+      if (await waitForConfirmation(result)) {
+        return true;
+      } else {
+        return false;
+      }
     } catch (err) {
       print('Error in addNewDoctor() in ethUtils.dart: ${err}');
       return false;
@@ -153,8 +210,8 @@ class EthereumUtils {
         chainId: null,
         fetchChainIdFromNetworkId: true,
       );
-      print('After send transaction');
-      print('Transaction hash is.... : ${result}');
+      // print('After send transaction');
+      // print('Transaction hash is.... : ${result}');
       // final result = await ethClient.call(
       //     contract: contract,
       //     function: ethFunction,
@@ -162,6 +219,11 @@ class EthereumUtils {
       if (result.isEmpty) {
         throw Exception(
             'addNewPatient function of ethUtils returns empty list');
+      }
+      if (await waitForConfirmation(result)) {
+        return true;
+      } else {
+        return false;
       }
       // return result[0];
       return false;
@@ -179,10 +241,83 @@ class EthereumUtils {
           contract: contract,
           function: ethFunction,
           params: [EthereumAddress.fromHex(patientAddr)]);
-      print('Result of getPatient, ethUtils: ${result}');
+      // print('Result of getPatient, ethUtils: ${result}');
       return result[0];
     } catch (err) {
       print('Error inside the EthUtils getPatient Function: ${err}');
+    }
+  }
+
+  Future approveDoctor(String doctorAddr, String patientAddr) async {
+    try {
+      var contract = await getDeployedContract();
+      final ethFunction = contract.function('addDoctorForPatient');
+      final credentials = EthPrivateKey.fromHex(dotenv.env['PRIVATE_KEY']!);
+      // dotenv.env['PRIVATE_KEY'];
+
+      Transaction tx = Transaction.callContract(
+        contract: contract,
+        function: ethFunction,
+        parameters: [
+          EthereumAddress.fromHex(doctorAddr),
+          EthereumAddress.fromHex(patientAddr),
+        ],
+        from: EthereumAddress.fromHex(patientAddr),
+        gasPrice: EtherAmount.inWei(
+          BigInt.from(50000000),
+        ),
+      );
+      // print('Sending approve tx');
+      final result = await ethClient.sendTransaction(
+        credentials as Credentials,
+        tx,
+        chainId: null,
+        fetchChainIdFromNetworkId: true,
+      );
+      print('THis is the approveDoctor reuslt: ${result}');
+      if (await waitForConfirmation(result)) {
+        return true;
+      } else {
+        return false;
+      }
+      // await getDoctorForPatient(dotenv.env['ACCOUNT_ADDRESS']!);
+      // print('GetDoctorForPatient called. just after approved finished');
+    } catch (err) {
+      print('Error in approveDoctor() in ethUtils.dart : ${err}');
+      return false;
+    }
+  }
+
+  Future updateHealthRecord(String patientAddr, String cid) async {
+    try {
+      var contract = await getDeployedContract();
+      final ethFunction = contract.function('updateHealthRecord');
+      final credentials = EthPrivateKey.fromHex(dotenv.env['PRIVATE_KEY']!);
+      Transaction tx = Transaction.callContract(
+        contract: contract,
+        function: ethFunction,
+        parameters: [EthereumAddress.fromHex(patientAddr), cid],
+        from: EthereumAddress.fromHex(patientAddr),
+        gasPrice: EtherAmount.inWei(
+          BigInt.from(5000000),
+        ),
+      );
+      print('Sending apprve tx');
+      final result = await ethClient.sendTransaction(
+        credentials as Credentials,
+        tx,
+        chainId: null,
+        fetchChainIdFromNetworkId: true,
+      );
+      print('This is the updateHealthRecord() ethUtil:${result}');
+      if (await waitForConfirmation(result)) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (err) {
+      print('Error in updateHealthRecord() ethUtil:${err}');
+      return false;
     }
   }
 

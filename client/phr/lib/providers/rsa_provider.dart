@@ -20,7 +20,12 @@ class RSAProvider extends StateNotifier<AsyncValue<int>> {
   }
 
   String encryptWithRSA(String message) {
+    print('Message is :${message}');
     return encrypt(message, helper.parsePublicKeyFromPem(_publicKey));
+  }
+
+  String encryptWithRSAWithKey(String message, String publicKey) {
+    return encrypt(message, helper.parsePublicKeyFromPem(publicKey));
   }
 
   String decryptWithRSA(String cipher) {
@@ -39,6 +44,7 @@ class RSAProvider extends StateNotifier<AsyncValue<int>> {
   }
 
   Future readKeys(int status) async {
+    print('REad Keys called');
     if (status == 0) {
       _status = 'patient';
     } else if (status == 1) {
@@ -54,6 +60,7 @@ class RSAProvider extends StateNotifier<AsyncValue<int>> {
         File('${documentsDirectory.path}/${_status}my_file1.txt');
     _publicKey = await filePublic.readAsString();
     _privateKey = await filePrivate.readAsString();
+    print('THiis is the PRIVATE KEY:${_privateKey}');
   }
 
   Future createKeyPair(int status) async {

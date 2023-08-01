@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phr/providers/doctor_provider.dart';
+import 'package:phr/providers/session_provider.dart';
 
 import './doctor_home_screen.dart';
 
@@ -27,10 +28,13 @@ class _CreateDoctorRecordState extends ConsumerState<CreateDoctorRecord> {
         return;
       }
       _form.currentState!.save();
-      if (await ref
+      var result = await ref
           .read(doctorNotifierProvider.notifier)
-          .createDoctor(_name, _email, _imageUrl, _address)) {
+          .createDoctor(_name, _email, _imageUrl, _address);
+      print('Create doctor finished');
+      if (result) {
         await ref.read(doctorNotifierProvider.notifier).getDoctor(_address);
+        ref.read(sessionControl.notifier).state = 'Doctor';
         Navigator.pushNamed(context, DoctorHomeScreen.routeName);
       } else {
         print('Doctor profile not created...');

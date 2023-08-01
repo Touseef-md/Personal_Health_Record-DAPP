@@ -7,16 +7,22 @@ contract HealthRecord {
     mapping(address => bool) isPatient;
     mapping(address => bool) isDoctor;
     mapping(address => string) patientRecords;
-    // struct patientRecord{
+    mapping(address => Patient) patients;
 
-    // }a
+    struct Patient {
+        address patientAddr;
+        mapping(address => bool) allowedDoctor;
+        address[] doctors;
+        // string [] appointments;
+        string cid;
+    }
     struct Doctor {
         string name;
         string email;
         string imageUrl;
         string publicKey;
         address doctorAddr;
-        address [] patients;
+        address[] patients;
         mapping(address => bool) Ispatients;
         //
         // address addr;
@@ -53,7 +59,13 @@ contract HealthRecord {
         );
         isPatient[patientAddr] = true;
         patientRecords[patientAddr] = cid;
+        Patient storage patient = patients[patientAddr];
+        patient.patientAddr = patientAddr;
+        patient.cid = cid;
         return true;
+    }
+    function removePatient(address patientAddr)public{
+        isPatient[patientAddr]=false;
     }
 
     function getIsDoctor(address doctorAddr) public view returns (bool) {
@@ -62,17 +74,38 @@ contract HealthRecord {
         }
         return false;
     }
+
     // function getDoctorHelper(address doctorAddr) internal view returns(Doctor storage){
     //     return doctorRecords[doctorAddr];
     // }
-    function getDoctor(address doctorAddr) public view returns (string memory,string memory,string memory,address,address[] memory) {
-        require(
-            getIsDoctor(doctorAddr) == true,
-            "Account address is not registered as doctor."
-        );
+    function getDoctor(
+        address doctorAddr
+    )
+        public
+        view
+        returns (
+            string memory,
+            string memory,
+            string memory,
+            address,
+            address[] memory,
+            string memory
+        )
+    {
+        // require(
+        //     getIsDoctor(doctorAddr) == true,
+        //     "Account address is not registered as doctor."
+        // );
         // address[] arr;
         // for(uint i=0)
-        return (doctorRecords[doctorAddr].name,doctorRecords[doctorAddr].email,doctorRecords[doctorAddr].imageUrl,doctorRecords[doctorAddr].doctorAddr,doctorRecords[doctorAddr].patients);
+        return (
+            doctorRecords[doctorAddr].name,
+            doctorRecords[doctorAddr].email,
+            doctorRecords[doctorAddr].imageUrl,
+            doctorRecords[doctorAddr].doctorAddr,
+            doctorRecords[doctorAddr].patients,
+            doctorRecords[doctorAddr].publicKey
+        );
         // return getDoctorHelper(doctorAddr);
         // return doctorRecords[doctorAddr];
     }
@@ -102,15 +135,55 @@ contract HealthRecord {
         return true;
     }
 
+    function addDoctorForPatient(
+        address doctorAddr,
+        address patientAddr
+    ) public {
+        require(
+            getIsPatient(patientAddr) == true,
+            "Account address is not of a registered Patient."
+        );
+        Patient storage patient = patients[patientAddr];
+        if (patient.allowedDoctor[doctorAddr] == false) {
+            patient.doctors.push(doctorAddr);
+        }
+        patient.allowedDoctor[doctorAddr] = true;
+    }
+
+    function getDoctorForPatient(
+        address patientAddr
+    ) public view returns (address[] memory) {
+        require(
+            getIsPatient(patientAddr) == true,
+            "This address is not of a registered patient"
+        );
+        Patient storage storedPatient = patients[patientAddr];
+        return storedPatient.doctors;
+        // return patients[patientAddr].patients;
+    }
+
     function addPatientForDoctor(
         address patientAddr,
         address doctorAddr
-    ) public  {
+    ) public {
         require(
             getIsDoctor(doctorAddr) == true,
             "addPatientForDoctor() function is triggered by non-doctor address."
         );
-        doctorRecords[doctorAddr].Ispatients[patientAddr] = true;
         doctorRecords[doctorAddr].patients.push(patientAddr);
+        doctorRecords[doctorAddr].Ispatients[patientAddr] = true;
+    }
+
+    function updateHealthRecord(
+        address patientAddr,
+        string calldata cid
+    ) public {
+        require(
+            getIsPatient(patientAddr) == true,
+            "A patient is not a registered on this account address."
+        );
+        patientRecords[patientAddr] = cid;
+        Patient storage patient = patients[patientAddr];
+        patient.cid = cid;
     }
 }

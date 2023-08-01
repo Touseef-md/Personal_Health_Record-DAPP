@@ -28,6 +28,16 @@ class EthereumUtilsProvider extends StateNotifier<AsyncValue<int>> {
     }
   }
 
+  Future getDoctorForPatient(String patientAddr) async {
+    // state=const
+    try {
+      final result = await ethUtil.getDoctorForPatient(patientAddr);
+      return result;
+    } catch (err) {
+      print('Error in getDoctorForPatient() in eth_utils_provider: ${err}');
+    }
+  }
+
   Future addNewDoctor(Doctor doctor, String publicKey) async {
     state = const AsyncValue.loading();
     try {
@@ -96,6 +106,28 @@ class EthereumUtilsProvider extends StateNotifier<AsyncValue<int>> {
     } catch (err) {
       print('Error insde ethProvider ${err}');
       return '';
+    }
+  }
+
+  Future approveDoctor(String doctorAddr, String patientAddr) async {
+    state = const AsyncValue.loading();
+    try {
+      final result = await ethUtil.approveDoctor(doctorAddr, patientAddr);
+      print('approveDoctor() eth_utils_provider finished...:${result}');
+    } catch (err) {
+      state = AsyncValue.error(err, StackTrace.current);
+      print('Erros inside the approveDoctor() of eth_util_provider:${err}');
+    }
+  }
+
+  Future updateHealthRecord(String patientAddr, String cid) async {
+    state = AsyncValue.loading();
+    try {
+      final result = await ethUtil.updateHealthRecord(patientAddr, cid);
+      // print('')
+    } catch (err) {
+      state = AsyncValue.error(err, StackTrace.current);
+      print('Error in updateHealthRecord() eth_util_provider:${err}');
     }
   }
 }

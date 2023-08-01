@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:phr/providers/session_provider.dart';
 import 'package:phr/screens/home_screen.dart';
 import '../providers/health_record_provider.dart';
 
@@ -37,13 +38,13 @@ class _CreateRecordState extends ConsumerState<CreateRecord> {
       return;
     }
     _formKey.currentState!.save();
-    await ref
-        .read(healthRecordNotifierProvider.notifier)
-        .addNewRecord(name, blood, height, weight, age);
+    await ref.read(healthRecordNotifierProvider.notifier).addNewRecord(
+        name, blood, height, weight, age, dotenv.env['ACCOUNT_ADDRESS']!);
     print('ADd record done from createpage ...');
     // await ref
     // .read(healthRecordNotifierProvider.notifier)
     // .retriveRecord(dotenv.env['ACCOUNT_ADDRESS']!);
+    ref.read(sessionControl.notifier).state = 'Patient';
     Navigator.pushNamed(context, HomeScreen.routeName);
     // await ref.read(healthRecordNotifierProvider.notifier).retriveRecord(cid);
     // healthRecordNotifierProvider.

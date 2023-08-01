@@ -11,6 +11,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:phr/providers/doctor_provider.dart';
 import 'package:phr/providers/health_record_provider.dart';
+import 'package:phr/providers/rsa_provider.dart';
+import 'package:phr/providers/session_provider.dart';
 import 'package:phr/screens/create_doctor_record.dart';
 import '../providers/eth_utils_provider.dart';
 // import 'package:walletconnect_flutter_v2/walletconnect_flutter_v2.dart';
@@ -121,13 +123,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(healthRecordNotifierProvider.notifier)
           .retriveRecord(patientAddr);
-      Navigator.pushNamed(context, HomeScreen.routeName);
+      // sessionControl
+      ref.read(sessionControl.notifier).state = 'Patient';
+      Navigator.pushReplacementNamed(context, HomeScreen.routeName);
     } else if (await ref
         .read(ethUtilsNotifierProvider.notifier)
         .getIsDoctor(patientAddr)) {
       // print('THis is doctor..');
+      ref.read(sessionControl.notifier).state = 'Doctor';
+      ref.read(rsaKeyNotifierProvider.notifier).readKeys(1);
       await ref.read(doctorNotifierProvider.notifier).getDoctor(patientAddr);
-
       Navigator.pushNamed(context, DoctorHomeScreen.routeName);
     } else {
       print('This is nothing...');

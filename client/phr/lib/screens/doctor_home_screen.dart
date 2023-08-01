@@ -2,17 +2,19 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
+// import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:phr/providers/doctor_provider.dart';
-import 'package:phr/providers/eth_utils_provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+// import 'package:phr/providers/eth_utils_provider.dart';
+// import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:phr/providers/rsa_provider.dart';
 import 'package:phr/screens/approve_doctor_screen.dart';
-import '../modals/doctor.dart';
+import 'package:phr/widgets/patient_drawer.dart';
+// import '../modals/doctor.dart';
 
 class DoctorHomeScreen extends ConsumerStatefulWidget {
   static const routeName = '/doctor';
@@ -29,6 +31,7 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
   String? patientAddress = '';
   late var documentId;
   final _form = GlobalKey<FormState>();
+  bool imageLoadError = false;
   @override
   void initState() {
     // TODO: implement initState
@@ -95,6 +98,19 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
     print('This is the read file: ${readFile}');
   }
 
+  Future storeApproveAppointment(Map data) async {
+    final directory = await getExternalStorageDirectories();
+    var address = data['address'];
+    final writeFile = await File(
+            '${directory![0].path}/approveAppointment/${address}/${data['date']}.txt')
+        .create(
+      exclusive: false,
+      recursive: true,
+    );
+    var encodedData = json.encode(data);
+    final writtenFile = await writeFile.writeAsString(encodedData);
+  }
+
   void initInfo() {
     var androidInitialize =
         const AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -105,16 +121,25 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
       initializationSettings,
       onDidReceiveNotificationResponse: (details) async {
         try {
-          // print('INside the details');
+          print('INside the details');
           if (details != null) {
-            print(details.payload);
-            print(
-                'THis is the details received ${details.id},${details.input},${details.notificationResponseType},${details.payload}');
-            Navigator.pushNamed(
-              context,
-              ApproveDoctorScreen.routeName,
-              arguments: details.payload,
-            );
+            // print()
+            // print('These are the detailssssss${details.payload.runtimeType}');
+            var decodedPayload = json.decode(details.payload as String);
+            print('details as json${decodedPayload}');
+            print(decodedPayload['request_no']);
+            print(decodedPayload['request_no'].runtimeType);
+            if (decodedPayload['request_no'] == '2') {
+              print('Request 2 is present');
+              storeApproveAppointment(decodedPayload);
+            }
+            // print(
+            //     'THis is the details received ${details.id},${details.input},${details.notificationResponseType},${details.payload}');
+            // Navigator.pushNamed(
+            //   context,
+            //   ApproveDoctorScreen.routeName,
+            //   arguments: details.payload,
+            // );
           } else {
             print('Details are null');
           }
@@ -124,13 +149,52 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
         return;
       },
     );
+    Future storePHR(Map data) async {
+      final directory = await getExternalStorageDirectories();
+      // decoded
+      var patientAddr = data['patient_address'];
+      // print('This is the patient addr:${patientAddress}');
+      final writeFile =
+          await File('${directory![0].path}/phrs/${patientAddress}.txt').create(
+        exclusive: false,
+        recursive: true,
+      );
+      // print('Made the written object');
+      final writtenFile = await writeFile.writeAsString(data['phr']);
+      // final readFile = await writtenFile.readAsString();
+      // // print('Before decodding :${readFile}');
+      // // List decodedPhr = json.decode(readFile);
+      // List<int> decodedPhr = [];
+      // // print('Original length:${decodedPhr.length}');
+      // // print('INt list length:${(decodedPhr.whereType<int>().toList()).length}');
+      // var temp = json.decode(readFile);
+      // for (int i = 0; i < temp.length; i++) {
+      //   //   if(decodedPhr[i].runtimeType==int)
+      //   decodedPhr.add(temp[i]);
+      // }
+      // print((json.decode(readFile))[0].runtimeType);
+      // // print('Json decoded phr is :${decodedPhr}');
+      // // print('Decoded phr is :${utf8.decode(decodedPhr)}');
+      // var cipher = utf8.decode(decodedPhr);
+      // String phr =
+      //     ref.read(rsaKeyNotifierProvider.notifier).decryptWithRSA(cipher);
+      // print('THis is the phr sent:${phr}');
+    }
+
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       print('.......................on Message.................');
       print('THis is the message:${message.data}');
       print(
           'onMessage: ${message.notification?.title}/${message.notification?.body}');
-      await storeNewDoctor(message.data);
-      print('LIne after store function');
+      // await storeNewDoctor(message.data);
+      // print('LIne after store function');
+      if (message.data['request_no'] == '4') {
+        print('THis is the phr received to the doctor');
+        print(message.data['phr']);
+        print(message.data['phr'].runtimeType);
+        await storePHR(message.data);
+        await ref.read(doctorNotifierProvider.notifier).getPHRs();
+      }
       BigTextStyleInformation bigTextStyleInformation = BigTextStyleInformation(
         message.notification!.body.toString(),
         htmlFormatBigText: true,
@@ -153,12 +217,12 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
 
       await flutterLocalNotificationsPlugin.show(0, message.notification?.title,
           message.notification?.body, platformChannelSpecifics,
-          payload: message.data.toString());
+          payload: json.encode(message.data));
     });
   }
 
-  void pushMessage(String token, String body, String title) async {
-    final doctor = ref.read(doctorNotifierProvider).value!;
+  void pushMessage(
+      String token, String body, String title, Map dataPayload) async {
     try {
       await http.post(
         Uri.parse('https://fcm.googleapis.com/fcm/send'),
@@ -167,18 +231,10 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
           'Authorization':
               'key=AAAAr6_IiXQ:APA91bEhqkKelWHfS-3uJfHK85tYnKlN-eMbujt0TiSfi2moYNOwoKOOM_h1OlS22_xftYVIktWcwYTaEBX68YKcXsLTEHTYQdOeUhJJO0sA-aJ2Vt3jsJWfjfdSenUBdPr5IMz80c6P'
         },
-        body: jsonEncode(
+        body: json.encode(
           <String, dynamic>{
             'priority': 'high',
-            'data': <String, dynamic>{
-              'click_action': 'FLUTTER_NOTIFICATIOIN_CLICK',
-              'status': 'done',
-              'body': 'This is the data body',
-              'title': 'This is the data title',
-              'name': doctor.name,
-              'email': doctor.email,
-              'address': doctor.address
-            },
+            'data': dataPayload,
             'notification': <String, dynamic>{
               'title': title,
               'body': body,
@@ -223,7 +279,19 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
     String token = (snap.data() as Map)['token'];
     print('TOken is ${token}');
     // final doctor = ref.read(doctorNotifierProvider).value!.address;
-    pushMessage(token, 'New doctor wants to access your PHR', 'A New Doctor');
+    final doctor = ref.read(doctorNotifierProvider).value!;
+    final dataPayload = {
+      'click_action': 'FLUTTER_NOTIFICATIOIN_CLICK',
+      'status': 'done',
+      'body': 'This is the data body',
+      'title': 'This is the data title',
+      'request_no': 1,
+      'name': doctor.name,
+      'email': doctor.email,
+      'address': doctor.address
+    };
+    pushMessage(token, 'New doctor wants to access your PHR', 'A New Doctor',
+        dataPayload);
   }
 
   @override
@@ -237,141 +305,153 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
         // backgroundColor: Colors.transparent,
         // foregroundColor: Colors.white,
       ),
+      drawer: PatientDrawer(),
       body: Padding(
         padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        child: Column(
-          // crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Hello,',
-                      style: Theme.of(context).textTheme.headlineLarge,
-                    ),
-                    Text(
-                      '${doctor.value?.name} 👋',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineLarge!
-                          .copyWith(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                CircleAvatar(
-                  backgroundImage: NetworkImage(
-                    doctor.value!.imageUrl,
-                    // scale: 5,
-                  ),
-                  minRadius: 10,
-                  maxRadius: 35,
-                )
-              ],
-            ),
-            Container(
-              width: double.infinity,
-              child: Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    25,
-                  ),
-                ),
-                // elevation: 5,
-                color: Colors.black,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                  child: Column(
+        child: SingleChildScrollView(
+          child: Column(
+            // crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Add new Patient',
-                        style:
-                            Theme.of(context).textTheme.headlineSmall!.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        'Hello,',
+                        style: Theme.of(context).textTheme.headlineLarge,
                       ),
-                      SizedBox(
-                        height: 10,
+                      Text(
+                        '${doctor.value?.name} 👋',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineLarge!
+                            .copyWith(fontWeight: FontWeight.bold),
                       ),
-                      Form(
-                        key: _form,
-                        child: Column(
-                          children: [
-                            TextFormField(
-                              decoration: InputDecoration(
-                                constraints: BoxConstraints.loose(
-                                  Size(
-                                    double.infinity,
-                                    45,
-                                  ),
-                                ),
-                                border: UnderlineInputBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    20,
-                                  ),
-                                ),
-                                fillColor: Colors.white,
-                                filled: true,
-                                // label: Text(
-                                //   'Enter patient Address ->',
-                                // ),
-                                labelText: 'Enter',
-                              ),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'Enter a valid account address';
-                                }
-                                return null;
-                              },
-                              onSaved: (newValue) {
-                                setState(() {
-                                  patientAddress = newValue;
-                                });
-                              },
-                            ),
-                            SizedBox(
-                              height: 10,
-                            ),
-                            ElevatedButton(
-                              onPressed: () {
-                                _onSubmit();
-                              },
-                              child: Text(
-                                'Add Patient',
-                              ),
-                            )
-                          ],
-                        ),
-                      )
                     ],
+                  ),
+                  CircleAvatar(
+                    foregroundImage: imageLoadError
+                        ? AssetImage(
+                            'assets/images/LoginImage.jpg',
+                          ) as ImageProvider<Object>?
+                        : NetworkImage(
+                            doctor.value!.imageUrl,
+                            scale: 5,
+                          ),
+                    onForegroundImageError: (exception, stackTrace) {
+                      print('Error while loading');
+                      imageLoadError = true;
+                    },
+                    backgroundColor: Colors.grey,
+                    minRadius: 10,
+                    maxRadius: 35,
+                  )
+                ],
+              ),
+              Container(
+                width: double.infinity,
+                child: Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      25,
+                    ),
+                  ),
+                  // elevation: 5,
+                  color: Colors.black,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Add new Patient',
+                          style:
+                              Theme.of(context).textTheme.headlineSmall!.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Form(
+                          key: _form,
+                          child: Column(
+                            children: [
+                              TextFormField(
+                                decoration: InputDecoration(
+                                  constraints: BoxConstraints.loose(
+                                    Size(
+                                      double.infinity,
+                                      45,
+                                    ),
+                                  ),
+                                  border: UnderlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      20,
+                                    ),
+                                  ),
+                                  fillColor: Colors.white,
+                                  filled: true,
+                                  // label: Text(
+                                  //   'Enter patient Address ->',
+                                  // ),
+                                  labelText: 'Enter',
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.trim().isEmpty) {
+                                    return 'Enter a valid account address';
+                                  }
+                                  return null;
+                                },
+                                onSaved: (newValue) {
+                                  setState(() {
+                                    patientAddress = newValue;
+                                  });
+                                },
+                              ),
+                              SizedBox(
+                                height: 10,
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  _onSubmit();
+                                },
+                                child: Text(
+                                  'Add Patient',
+                                ),
+                              )
+                            ],
+                          ),
+                        )
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            TextFormField(
-              decoration: InputDecoration(
-                  label: Text(
-                    'Search Patient using Address',
-                  ),
-                  constraints: BoxConstraints.loose(
-                    Size(
-                      double.infinity,
-                      50,
+              TextFormField(
+                decoration: InputDecoration(
+                    label: Text(
+                      'Search Patient using Address',
                     ),
-                  )
-                  // border: OutlineInputBorder(),
-                  ),
-              onFieldSubmitted: (value) {},
-            ),
-            // ListView.builder(itemBuilder: (context, index) {
-
-            // },itemCount: ,)
-            Text('THis is '),
-            // ref.watch(ethUtilsNotifierProvider);
-          ],
+                    constraints: BoxConstraints.loose(
+                      Size(
+                        double.infinity,
+                        50,
+                      ),
+                    )
+                    // border: OutlineInputBorder(),
+                    ),
+                onFieldSubmitted: (value) {},
+              ),
+              // ListView.builder(itemBuilder: (context, index) {
+        
+              // },itemCount: ,)
+              Text('THis is '),
+              // ref.watch(ethUtilsNotifierProvider);
+            ],
+          ),
         ),
       ),
     );

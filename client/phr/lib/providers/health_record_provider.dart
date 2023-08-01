@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:phr/providers/doctor_approve_requests_provider.dart';
+import 'package:phr/providers/doctor_provider.dart';
 import 'package:phr/providers/eth_utils_provider.dart';
 import 'package:phr/providers/rsa_provider.dart';
 // import 'package:rsa_encrypt/rsa_encrypt.dart';
@@ -9,12 +11,15 @@ import 'package:phr/providers/rsa_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './filecoin_provider.dart';
 
+import '../modals/doctor.dart';
 import '../modals/healtrecord.dart';
 
 class HealthRecordProvider extends StateNotifier<AsyncValue<int>> {
-  String _name = '', _blood = '';
+  String _name = '', _blood = '', _address = '';
   double _height = 0, _weight = 0;
   int _age = 0;
+  List<Map<String, dynamic>> _bloodPressure = [];
+  String patientAddress = dotenv.env['ACCOUNT_ADDRESS']!;
   late HealthRecord healthRecord;
   late String cid;
   // var _keyPair;
@@ -28,12 +33,23 @@ class HealthRecordProvider extends StateNotifier<AsyncValue<int>> {
   HealthRecordProvider(this.ref) : super(AsyncValue.loading()) {}
 
   HealthRecord toRecord(Map data) {
+    print(data['appointments']);
+    print(data['appointments'].runtimeType);
+    // print(json.decode(data['appointments'])[0]);
+    // print(json.decode(data['appointments'])[0].runtimeType);
     HealthRecord newRecord = HealthRecord(
+      address: data['address'],
       name: data['name'],
       bloodGroup: data['bloodGroup'],
       age: data['age'],
       weight: data['weight'],
       height: data['height'],
+      bloodPressure: json.decode(data['bloodPressure']),
+      // bloodPressure:
+      // (json.decode(data['bloodPressure'])) as List<Map<String, dynamic>>,
+      appointments: json.decode(data['appointments']),
+      conditions: json.decode(data['conditions']),
+      prescriptions: json.decode(data['prescriptions']),
     );
     // data.forEach(
     //   (key, value) {},
@@ -42,11 +58,43 @@ class HealthRecordProvider extends StateNotifier<AsyncValue<int>> {
     return newRecord;
   }
 
+  Future getDoctorsForPatient() async {
+    print('GetDoctorForPatient called...');
+    state = AsyncValue.loading();
+    List doctorsList = (await ref
+        .read(ethUtilsNotifierProvider.notifier)
+        .getDoctorForPatient(patientAddress)) as List;
+    print('THis is the returned Doctors list${doctorsList}');
+    healthRecord.doctors = [];
+    for (int i = 0; i < doctorsList.length; i++) {
+      // if (i == 0) {
+      // healthRecord.doctors = [];
+      // }
+      // ref.read(doctorNotifierProvider.notifier).getfDoctor(doctorsList[i]);
+      var result = await ref
+          .read(ethUtilsNotifierProvider.notifier)
+          .getDoctor((doctorsList[i]).toString());
+      var doctor = Doctor(
+        email: result[1],
+        name: result[0],
+        address: result[3].toString(),
+        imageUrl: result[2],
+        publicKey: result[5],
+      );
+      healthRecord.doctors.add(doctor);
+    }
+    state = AsyncValue.data(1);
+    // print(
+    //     'THis is teh doctor lsit in the health record provider: ${healthRecord.doctors[0]}');
+  }
+
   Future retriveRecord(String patientAddr) async {
+    state = AsyncValue.loading();
     await ref.read(rsaKeyNotifierProvider.notifier).readKeys(0);
     cid = await ref
         .read(ethUtilsNotifierProvider.notifier)
         .getPatient(patientAddr);
+    //Getting doctors for the patient
     var message =
         await ref.read(filecoinNotifierProvider.notifier).retriveData(cid);
     // print('THis is the message: ${message}');
@@ -61,20 +109,110 @@ class HealthRecordProvider extends StateNotifier<AsyncValue<int>> {
     print('THIs is after decryption : ${messageRetived}');
     // print(jsonDecode(messageRetived));
     var test = jsonDecode(messageRetived);
+    print('This is teh decoded retrieved record:${test}');
     healthRecord = toRecord(test);
+
+    print('This is teh retrieved record : ${healthRecord}');
+    print(healthRecord.appointments);
+    getDoctorsForPatient();
+    state = AsyncValue.data(1);
     // print(newRecord.bloodPressure);
     // toRecord(test);
   }
 
-  Future addNewRecord(
-      name, String blood, double height, double weight, int age) async {
+  // Future updateRecord(String name, String blood, double height, double weight,
+  //     int age, List<Map<String, dynamic>> bloodPressure) async {
+  //   state = AsyncValue.loading();
+  //   _name = name;
+  //   _blood = blood;
+  //   _height = height;
+  //   _weight = weight;
+  //   _age = age;
+  //   _bloodPressure = bloodPressure;
+  //   healthRecord = HealthRecord(
+  //       address: _address,
+  //       name: _name,
+  //       bloodGroup: _blood,
+  //       age: _age.toString(),
+  //       weight: _weight,
+  //       height: _height,
+  //       bloodPressure: _bloodPressure);
+
+  //   String jsonHealthRecord = jsonEncode(healthRecord);
+  //   print('THis is teh json health record${jsonHealthRecord}');
+  //   state = AsyncValue.data(1);
+  // }
+
+  Future recordAppointment(Map data) async {
+    state = AsyncValue.loading();
+    print('Entered recordAppointment');
+    healthRecord.appointments.add({
+      'date': data['date'],
+      'hour': data['hour'],
+      'minute': data['minute'],
+      'name': data['name'],
+      'email': data['email'],
+    });
+    String jsonHealthRecord = json.encode(healthRecord);
+    print('THis is the json encoded health Record:${jsonHealthRecord}');
+    // print('THis is the decoded form:${json.decode(jsonHealthRecord)}');
+    var cipher = ref
+        .read(rsaKeyNotifierProvider.notifier)
+        .encryptWithRSA(jsonHealthRecord);
+    var cipherEncode = utf8.encode(cipher);
+    cid = await ref
+        .read(filecoinNotifierProvider.notifier)
+        .postData(cipherEncode);
+    await ref
+        .read(ethUtilsNotifierProvider.notifier)
+        .updateHealthRecord(dotenv.env['ACCOUNT_ADDRESS']!, cid);
+    print('RecordAppointment() is done...');
+    state = AsyncValue.data(1);
+  }
+
+  Future addCondition(Map data) async {
+    state = AsyncValue.loading();
+    // var conditionsList = healthRecord.conditions;
+    // try {
+    // healthRecord.conditions = List.from(healthRecord.conditions);
+    healthRecord.conditions.add(data);
+    print(healthRecord.conditions);
+    // state = AsyncValue.data(1);
+    // } catch (err) {
+    // print('THis is teherror while adding: ${err}');
+    // return;
+    // }
+    // healthRecord.conditions.add({
+    //   'dateTime': data['dateTime'],
+    //   'description': data['description'],
+    //   // 'imageUrls': data['imageUrls'],
+    // });
+    String jsonHealthRecord = json.encode(healthRecord);
+    var cipher = ref
+        .read(rsaKeyNotifierProvider.notifier)
+        .encryptWithRSA(jsonHealthRecord);
+    var cipherEncode = utf8.encode(cipher);
+    cid = await ref
+        .read(filecoinNotifierProvider.notifier)
+        .postData(cipherEncode);
+    await ref
+        .read(ethUtilsNotifierProvider.notifier)
+        .updateHealthRecord(dotenv.env['ACCOUNT_ADDRESS']!, cid);
+    state = AsyncValue.data(1);
+  }
+
+  Future addNewRecord(name, String blood, double height, double weight, int age,
+      String address) async {
+    state = AsyncValue.loading();
     _name = name;
     _blood = blood;
     _height = height;
     _weight = weight;
     _age = age;
+    _address = address;
 
     healthRecord = HealthRecord(
+      address: _address,
       name: _name,
       bloodGroup: _blood,
       age: _age.toString(),
@@ -103,62 +241,7 @@ class HealthRecordProvider extends StateNotifier<AsyncValue<int>> {
     await ref
         .read(ethUtilsNotifierProvider.notifier)
         .addNewRecord(dotenv.env['ACCOUNT_ADDRESS']!, cid);
-    // retriveRecord(cid);
-    // HealthRecord
-    // Converter();
-    // var publicKey = Keys[0], privateKey = Keys[1];
-    // crypto.AsymmetricKeyPair keyPair;
-    // final keyPair;
-    // // crypto.
-    // //to store the KeyPair once we get data from our future
-    // // crypto.AsymmetricKeyPair keyPair;
-    // var helper = RsaKeyHelper();
-    // keyPair = await helper.computeRSAKeyPair(helper.getSecureRandom());
-    // // keyPair.encodePrivateKeytoPemPKCS1();
-    // var publicKey =
-    //     helper.encodePublicKeyToPemPKCS1(keyPair.publicKey as RSAPublicKey);
-    // var privateKey =
-    //     helper.encodePrivateKeyToPemPKCS1(keyPair.privateKey as RSAPrivateKey);
-    // print(helper.encodePublicKeyToPemPKCS1(keyPair.publicKey as RSAPublicKey));
-    // print(
-    //     helper.encodePrivateKeyToPemPKCS1(keyPair.privateKey as RSAPrivateKey));
-    // print('fdsfsd${keyPair.publicKey.toString()}');
-    // Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    // // print('PAth is ${documentsDirectory.path}');
-    // File filePublic = File('${documentsDirectory.path}/my_file0.txt');
-    // File filePrivate = File('${documentsDirectory.path}/my_file1.txt');
-
-    // final writingPublicResponse = await filePublic.writeAsString(publicKey);
-    // print('Writing response${writingPublicResponse}');
-    // // print(await file.readAsString());
-    // final writingPrivateResponse = await filePrivate.writeAsString(privateKey);
-    // encr
-    // filecoinNotifierProvider.
-    // ref.filecoinNotifierProvider();
-    // await ref.read(filecoinNotifierProvider.notifier).postData();
-
-    // print(
-    //     filecoinNotifierProvider == null ? 'It is null' : 'NOT NULL Provider');
-    // print('HFslfsfsdfs THis si indication');
-    // final response =
-    //     await ref.read(filecoinNotifierProvider.notifier).postData();
-    // print('FIlecoind called done........');
-    // print('Response is : ${response}');
-    // final cypher = encrypt('This is my message to encrypt something',
-    // helper.parsePublicKeyFromPem(publicKey));
-    // print('THis is the cypher${cypher}');
-    // final decryptedMessage =
-    // decrypt(cypher, helper.parsePrivateKeyFromPem(privateKey));
-    // print('This is the decrypted message ${decryptedMessage}');
-
-    // print(writingResponse1);
-    // print(await file.readAsString());
-    // final decodedPublic = helper.decodePEM(await file.readAsString());
-    // print('This is decoding');
-    // print(helper.encodePublicKeyToPemPKCS1(
-    // helper.parsePublicKeyFromPem(await file.readAsString())));
-    // print('Decoded ${decodedPublic}');
-    // print(keyPair.privateKey.);
+    state = AsyncValue.data(1);
   }
 }
 

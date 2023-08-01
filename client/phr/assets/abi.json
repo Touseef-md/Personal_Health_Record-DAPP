@@ -7,6 +7,24 @@
 				"type": "address"
 			},
 			{
+				"internalType": "address",
+				"name": "patientAddr",
+				"type": "address"
+			}
+		],
+		"name": "addDoctorForPatient",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "doctorAddr",
+				"type": "address"
+			},
+			{
 				"internalType": "string",
 				"name": "publicKey",
 				"type": "string"
@@ -77,7 +95,7 @@
 		],
 		"name": "addPatientForDoctor",
 		"outputs": [],
-		"stateMutability": "view",
+		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -110,6 +128,30 @@
 				"name": "",
 				"type": "address"
 			},
+			{
+				"internalType": "address[]",
+				"name": "",
+				"type": "address[]"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "patientAddr",
+				"type": "address"
+			}
+		],
+		"name": "getDoctorForPatient",
+		"outputs": [
 			{
 				"internalType": "address[]",
 				"name": "",
@@ -174,6 +216,37 @@
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "patientAddr",
+				"type": "address"
+			}
+		],
+		"name": "removePatient",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "patientAddr",
+				"type": "address"
+			},
+			{
+				"internalType": "string",
+				"name": "cid",
+				"type": "string"
+			}
+		],
+		"name": "updateHealthRecord",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	}
 ]
